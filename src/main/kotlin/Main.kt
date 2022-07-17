@@ -1,82 +1,24 @@
+import java.io.File
 import java.time.LocalTime
 import kotlin.math.ceil
 import kotlin.math.floor
-import kotlin.math.pow
 import kotlin.math.sqrt
 
-/*
-	val unSequence = File("src/main/resources/Un.txt").bufferedReader().readLines().map { it.toLong() }
-	unSequence.forEachIndexed { i, it ->
-		println("$it \t\t\t\t ${i+1}th")
-//		println(primeFactors(it))
-		val powers = indexForm(primeFactors(it)).map { x ->
-			x.second
-		}
-		println(powers.joinToString(" "))
-		println(powers.sum())
-//		indexForm(primeFactors(it)).forEach { x ->
-//			print((x.second + 1).toString() + " ")
-//		}
-//		println()
-
-		println()
-	}
-
-	bruteForceSequence()
- */
-
 fun main() {
-	val factorSequences = generateAllFactorSequences(210)
-	factorSequences.forEach {
-		println(it)
-	}
-
-	println()
-	println()
-	println()
-
-	factorSequences.forEach {
-		println(it.reduce { acc, i -> acc * i })
-	}
-
-//	efficientBruteForce(1)
+	efficientBruteForce(1)
 }
 
-//==========================
-//fun generateAllFactorSequences(n: Long): List<List<Int>> {
-//	val factorSequences = mutableListOf<List<Int>>()
-//	val primeFactors = primeFactors(n)
-//
-//	var lastSet = mutableListOf(primeFactors)
-//	var nextSet = mutableListOf<List<Int>>()
-//
-//	for (i in 1 until primeFactors.size - 1) {
-//		for (set in lastSet) {
-//			nextSet.addAll(multiplyOutSet(set))
-//		}
-//
-//		factorSequences.addAll(lastSet.toMutableList())
-//		lastSet = nextSet.toMutableList()
-//		nextSet = mutableListOf()
-//	}
-//	factorSequences.addAll(lastSet.toMutableList())
-//
-//	return factorSequences.toList()
-//}
-//
-//fun multiplyOutSet(set:List<Int>): List<List<Int>> {
-//	val sets = mutableListOf<MutableList<Int>>()
-//	for (i in 0 until set.size - 1) {
-//		val subset = set.toMutableList()
-//		subset.removeAt(i)
-//		for (j in 0 until subset.size - i) {
-//			val subSubset = subset.toMutableList()
-//			subSubset[j + i] = subSubset[j + i] * set[i]
-//			sets.add(subSubset)
-//		}
-//	}
-//	return sets
-//}
+fun parseIntoCSV(rawTextPath: String, path: String) { // HORRIBLE CODE AHEAD
+	val lines = File(rawTextPath).readLines().map {
+		if (it.contains("#")) {
+			"Rule " + it.replace("^.*#".toRegex(), "").replace("\\s+.*$".toRegex(), "") + ",=" + it.replace("^\\d+\\s{2}#\\d+\\s{2}".toRegex(), "").replace("\\s+\\d+:\\d+:\\d+\\.\\d+\$".toRegex(), "").replace("\\s*".toRegex(), "")
+		} else {
+			",=" + it.replace("^\\d+\\s+".toRegex(), "").replace("\\s+.*".toRegex(), "")
+		}
+	}
+	File(path).writeText(lines.joinToString("\n"))
+}
+
 fun generateAllFactorSequences(n: Long): List<List<Int>> {
 	val factorSequences = HashSet<List<Int>>()
 	val primeFactors = primeFactors(n)
@@ -99,8 +41,8 @@ fun generateAllFactorSequences(n: Long): List<List<Int>> {
 		sequence.toMutableList().sort()
 	}
 
-	return factorSequences.map {
-		x -> run {
+	return factorSequences.map { x ->
+		run {
 			val sequence = x.toMutableList()
 			sequence.sort()
 			sequence.toList()
@@ -108,7 +50,7 @@ fun generateAllFactorSequences(n: Long): List<List<Int>> {
 	}
 }
 
-fun multiplyOutSet(set:List<Int>): List<List<Int>> {
+fun multiplyOutSet(set: List<Int>): List<List<Int>> {
 	val sets = mutableListOf<MutableList<Int>>()
 	for (i in 0 until set.size - 1) {
 		val subset = set.toMutableList()
@@ -121,50 +63,9 @@ fun multiplyOutSet(set:List<Int>): List<List<Int>> {
 	}
 	return sets
 }
-//=========================
-
-/*
-fun efficientBruteForce(startingN: Int) {
-	val previousValues = hashMapOf<Long, Int>()
-	var i = startingN
-	while (true) {
-		val iFactorNumber = countFactors(i.toLong())
-		if (iFactorNumber <= 2) {
-			// RULE #1 | for prime n: Un = 2^{n-1}
-			println("$i \t 2^${i - 1} \t\t\t (${2.0.pow (i - 1)})")
-			i++
-			continue
-		} else if (iFactorNumber == 4) {
-			// RULE #2 | for n with 4 factors (1, n, a, b), Un = 2^{b-1} * 3^{a-1}
-			val iFactors = factorise(i.toLong()).drop(2)
-			println("$i \t   ${2.0.pow(iFactors[1].toInt() - 1) * 3.0.pow(iFactors[0].toInt() - 1)}")
-			i++
-			continue
-		}
-
-		var n = 0L
-		do {
-			n += 2
-			val factors = if (previousValues.containsKey(n)) {
-				previousValues[n]
-			} else {
-					countFactors(n)
-			}
-			previousValues[n] = factors ?: 0
-		} while (factors != i)
-
-		println("$i \t   $n")
-		i++
-	}
-}
-*/
-
-fun timestamp(): String {
-	return "  \t\t\t ${LocalTime.now()}"
-}
 
 fun addTimestamp(str: String): String {
-	return "$${str.padEnd(30, ' ')}${LocalTime.now()}"
+	return "${str.padEnd(30, ' ')}${LocalTime.now()}"
 }
 
 fun efficientBruteForce(startingN: Int) {
@@ -221,24 +122,6 @@ fun efficientBruteForce(startingN: Int) {
 	}
 }
 
-fun bruteForceSequence() {
-	var i = 1
-	while (true) {
-		if (countFactors(i.toLong()) <= 2) {
-			println("$i \t 2^${i - 1} \t\t\t (${2.0.pow(i - 1)})")
-			i++
-			continue
-		}
-
-		var n = 2L
-		while (countFactors(n) != i) {
-			n += 2
-		}
-		println("$i \t   $n")
-		i++
-	}
-}
-
 fun countFactors(n: Long): Int {
 	if (n == 1L) {
 		return 1
@@ -286,18 +169,4 @@ fun primeFactors(number: Long): List<Int> {
 		factors.add(n.toInt())
 	}
 	return factors
-}
-
-fun indexForm(factors: List<Long>): List<Pair<Long, Long>> {
-	val indexPairs = mutableListOf<Pair<Long, Long>>()
-	var lastFactor = 0L
-	factors.forEach {
-		if (it != lastFactor) {
-			lastFactor = it
-			indexPairs.add(Pair(it, 1))
-		} else {
-			indexPairs[indexPairs.size - 1] = Pair(it, indexPairs.last().second + 1)
-		}
-	}
-	return indexPairs.toList()
 }
