@@ -1,11 +1,75 @@
 import java.io.File
 import java.time.LocalTime
-import kotlin.math.ceil
-import kotlin.math.floor
-import kotlin.math.sqrt
+import kotlin.math.*
 
 fun main() {
-	search(1)
+	smartSearch()
+
+//	search(1)
+
+//	parseIntoCSV()
+
+//	val sequence = getSequence()
+//	sequence.forEachIndexed { index, un ->
+//		val n = index + 1
+//		println("n: $n,  Un: $un  ".padEnd(30, '='))
+//
+//		val indexFactorisationUN = indexForm(primeFactors(un))
+//		println("> ${beatifyIndexForm(indexFactorisationUN)}")
+//
+//		val allSequences = generateAllFactorSequences(n).map { x -> x.map { y -> y - 1 } }
+//		val lowest = allSequences.minByOrNull { x ->
+//			run {
+//				var weight = 0.0
+//				for (i in x.indices) {
+//					weight += x[i] * primeWeights[i]
+//				}
+//				weight
+//			}
+//		}!!
+//
+//		println("-".repeat(10))
+//		println(indexFactorisationUN.map { it.second })
+//		println(lowest)
+//
+//		println("=".repeat(30) + "\n")
+//	}
+}
+
+val primes = listOf(
+	2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97, 101,
+	103, 107, 109, 113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179, 181, 191, 193, 197, 199,
+	211, 223, 227, 229, 233, 239, 241, 251, 257, 263, 269, 271, 277, 281, 283, 293, 307, 311, 313, 317,
+	331, 337, 347, 349, 353, 359, 367, 373, 379, 383, 389, 397, 401, 409, 419, 421, 431, 433, 439, 443,
+	449, 457, 461, 463, 467, 479, 487, 491, 499, 503, 509, 521, 523, 541, 547, 557, 563, 569, 571, 577,
+	587, 593, 599, 601, 607, 613, 617, 619, 631, 641, 643, 647, 653, 659, 661, 673, 677, 683, 691, 701,
+	709, 719, 727, 733, 739, 743, 751, 757, 761, 769, 773, 787, 797, 809, 811, 821, 823, 827, 829, 839,
+	853, 857, 859, 863, 877, 881, 883, 887, 907, 911, 919, 929, 937, 941, 947, 953, 967, 971, 977, 983,
+	991, 997
+)
+val primeWeights = primes.map { ln(it.toDouble()) }
+fun getU(n: Int): List<Pair<Int, Int>> {
+	return generateAllFactorSequences(n).minByOrNull { x ->
+		run {
+			var weight = 0.0
+			for (i in x.indices) {
+				weight += x[i] * primeWeights[i]
+			}
+			weight
+		}
+	}!!.mapIndexed { index, i -> Pair(primes[index], i) }
+}
+
+fun getSequence(): List<Int> {
+	return File("src/main/resources/rawSequence.txt").readLines().map { it.toInt() }
+}
+
+fun smartSearch(startingN: Int = 1, endingN: Int = -1) {
+	var n = startingN
+	while (n <= endingN || endingN == -1) {
+		println("$n \t ${beatifyIndexForm(getU(n))}")
+		n++
+	}
 }
 
 // Looks for successive values for Un via the use of rules and bruteforce
@@ -18,20 +82,24 @@ fun search(startingN: Int) {
 	var n = startingN
 	while (true) {
 		// Rules
-		val iFactorNumber = countFactors(n)
-		if (iFactorNumber <= 2) {
+		val nFactorNumber = countFactors(n)
+		if (nFactorNumber <= 2) {
 			// RULE #1 | for prime n: Un = 2^{n-1}
 			printWithTimestamp("$n  #1  2^${n - 1}")
 			n++
 			continue
-		} else if (iFactorNumber == 4) {
+		} else if (nFactorNumber == 4) {
 			// RULE #2 | for n with 4 factors (1, n, a, b), Un = 2^{b-1} * 3^{a-1}  (b > a)
+			// EXCEPTION | for cubes of primes this is not the case as a = b^2,
+			// therefore there are other possible sequences
 			val iFactors = factorise(n).drop(2)
-			printWithTimestamp("$n  #2  2^${iFactors[1] - 1} * 3^${iFactors[0] - 1}")
-			n++
-			continue
-		} else if (iFactorNumber == 3) {
-			// RULE #3 | for n being a square of a prime with factors (1, n, a) (a is prime) the Un = 2^{a-1} * 3^{a-1}
+			if (iFactors[0] * iFactors[0] * iFactors[0] != n) {
+				printWithTimestamp("$n  #2  2^${iFactors[1] - 1} * 3^${iFactors[0] - 1}")
+				n++
+				continue
+			}
+		} else if (nFactorNumber == 3) {
+			// RULE #3 | for n being a square of a prime with factors (1, a, n) (a is prime) the Un = 2^{a-1} * 3^{a-1}
 			val iFactor = factorise(n).drop(2)[0] - 1
 			printWithTimestamp("$n  #3  2^$iFactor * 3^$iFactor")
 			n++
@@ -107,6 +175,9 @@ fun factorise(n: Int): List<Int> {
 
 // https://www.vogella.com/tutorials/JavaAlgorithmsPrimeFactorization/article.html
 fun primeFactors(number: Int): List<Int> {
+	if (number == 1) {
+		return listOf(1)
+	}
 	var n = number
 	val factors = mutableListOf<Int>()
 	var i = 2
@@ -121,6 +192,26 @@ fun primeFactors(number: Int): List<Int> {
 		factors.add(n)
 	}
 	return factors
+}
+
+// Parses a list of factors into index form
+// E.g. indexForm([2, 2, 2, 3, 5, 5]) => [(2, 3), (3, 1), (5, 2)]
+fun indexForm(factors: List<Int>): List<Pair<Int, Int>> {
+	val indexPairs = mutableListOf<Pair<Int, Int>>()
+	var lastFactor = 0
+	factors.forEach {
+		if (it != lastFactor) {
+			lastFactor = it
+			indexPairs.add(Pair(it, 1))
+		} else {
+			indexPairs[indexPairs.size - 1] = Pair(it, indexPairs.last().second + 1)
+		}
+	}
+	return indexPairs.toList()
+}
+
+fun beatifyIndexForm(factors: List<Pair<Int, Int>>): String {
+	return factors.joinToString(", ") { "${it.first}^${it.second}" }
 }
 
 // Produces every set of number whose product is n
@@ -161,8 +252,8 @@ fun generateAllFactorSequences(n: Int): List<List<Int>> {
 			sequence.sortDescending()
 			sequence.toList()
 		}
-	}
-	// Factors put in descending order
+	}.distinct().toList()
+	// Factors put in descending order and removes duplicates
 }
 
 // Given a set of numbers each number is multiplied with another to provide a new set
@@ -197,9 +288,9 @@ fun printWithTimestamp(str: String) {
 // THIS FUNCTION IS HORRIBLY WRITTEN - I'm not bothered
 // Takes the console output of the search and parses it into a csv,
 // which can then be imported to replace the values in the spreadsheet
-fun parseIntoCSV(rawTextPath: String, path: String) {
-	val lines = File(rawTextPath).readLines().map {
-		if (it.contains("#")) {
+fun parseIntoCSV(rawTextPath: String = "src/main/resources/Un.txt", path: String = "src/main/resources/un_spreadsheet.csv") {
+	val lines = File(rawTextPath).readLines().mapIndexed { index, it ->
+		"$index," + if (it.contains("#")) {
 			"Rule " + it.replace("^.*#".toRegex(), "").replace("\\s+.*$".toRegex(), "") + ",=" + it.replace("^\\d+\\s{2}#\\d+\\s{2}".toRegex(), "").replace("\\s+\\d+:\\d+:\\d+\\.\\d+\$".toRegex(), "").replace("\\s*".toRegex(), "")
 		} else {
 			",=" + it.replace("^\\d+\\s+".toRegex(), "").replace("\\s+.*".toRegex(), "")
