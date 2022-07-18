@@ -34,9 +34,7 @@ fun getU(n: Int): List<Pair<Int, Int>> {
 		listOf(Pair(2, n - 1))
 	} else {
 		// Every factor sequence is weighted and the lowest is the powers of Un's prime factorization
-		val a = generateAllFactorSequences(n)
-		println("$n ${a.size}")
-		a.minByOrNull { x ->
+		generateAllFactorSequences(n).minByOrNull { x ->
 			run {
 				var weight = 0.0
 				for (i in x.indices) {
