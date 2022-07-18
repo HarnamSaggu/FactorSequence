@@ -1,39 +1,11 @@
 import java.io.File
+import java.io.FileWriter
 import java.time.LocalTime
 import kotlin.math.*
 
 fun main() {
-	smartSearch()
-
-//	search(1)
-
-//	parseIntoCSV()
-
-//	val sequence = getSequence()
-//	sequence.forEachIndexed { index, un ->
-//		val n = index + 1
-//		println("n: $n,  Un: $un  ".padEnd(30, '='))
-//
-//		val indexFactorisationUN = indexForm(primeFactors(un))
-//		println("> ${beatifyIndexForm(indexFactorisationUN)}")
-//
-//		val allSequences = generateAllFactorSequences(n).map { x -> x.map { y -> y - 1 } }
-//		val lowest = allSequences.minByOrNull { x ->
-//			run {
-//				var weight = 0.0
-//				for (i in x.indices) {
-//					weight += x[i] * primeWeights[i]
-//				}
-//				weight
-//			}
-//		}!!
-//
-//		println("-".repeat(10))
-//		println(indexFactorisationUN.map { it.second })
-//		println(lowest)
-//
-//		println("=".repeat(30) + "\n")
-//	}
+	smartSearch(1, 511)
+	parseIntoCSV()
 }
 
 val primes = listOf(
@@ -49,27 +21,38 @@ val primes = listOf(
 )
 val primeWeights = primes.map { ln(it.toDouble()) }
 fun getU(n: Int): List<Pair<Int, Int>> {
-	return generateAllFactorSequences(n).minByOrNull { x ->
-		run {
-			var weight = 0.0
-			for (i in x.indices) {
-				weight += x[i] * primeWeights[i]
+	val nFactors = factorise(n)
+	return if (nFactors.size == 2) {
+		listOf(Pair(2, nFactors.last() - 1))
+	} else {
+		val a = generateAllFactorSequences(n)
+		println("$n ${a.size}")
+		a.minByOrNull { x ->
+			run {
+				var weight = 0.0
+				for (i in x.indices) {
+					weight += (x[i] - 1) * primeWeights[i]
+				}
+				weight
 			}
-			weight
-		}
-	}!!.mapIndexed { index, i -> Pair(primes[index], i) }
+		}!!.mapIndexed { index, i -> Pair(primes[index], i - 1) }
+	}
 }
 
 fun getSequence(): List<Int> {
 	return File("src/main/resources/rawSequence.txt").readLines().map { it.toInt() }
 }
 
-fun smartSearch(startingN: Int = 1, endingN: Int = -1) {
+fun smartSearch(startingN: Int = 1, endingN: Int = -1, path: String = "src/main/resources/Un.txt") {
+	var log = ""
 	var n = startingN
 	while (n <= endingN || endingN == -1) {
-		println("$n \t ${beatifyIndexForm(getU(n))}")
+		val record = "$n\t\t${beatifyIndexForm(getU(n))}"
+		log += "$record\n"
+		println(record.padEnd(50, ' ') + LocalTime.now())
 		n++
 	}
+	File(path).writeText(log)
 }
 
 // Looks for successive values for Un via the use of rules and bruteforce
@@ -211,7 +194,7 @@ fun indexForm(factors: List<Int>): List<Pair<Int, Int>> {
 }
 
 fun beatifyIndexForm(factors: List<Pair<Int, Int>>): String {
-	return factors.joinToString(", ") { "${it.first}^${it.second}" }
+	return factors.joinToString(" * ") { "${it.first}^${it.second}" }
 }
 
 // Produces every set of number whose product is n
@@ -289,12 +272,8 @@ fun printWithTimestamp(str: String) {
 // Takes the console output of the search and parses it into a csv,
 // which can then be imported to replace the values in the spreadsheet
 fun parseIntoCSV(rawTextPath: String = "src/main/resources/Un.txt", path: String = "src/main/resources/un_spreadsheet.csv") {
-	val lines = File(rawTextPath).readLines().mapIndexed { index, it ->
-		"$index," + if (it.contains("#")) {
-			"Rule " + it.replace("^.*#".toRegex(), "").replace("\\s+.*$".toRegex(), "") + ",=" + it.replace("^\\d+\\s{2}#\\d+\\s{2}".toRegex(), "").replace("\\s+\\d+:\\d+:\\d+\\.\\d+\$".toRegex(), "").replace("\\s*".toRegex(), "")
-		} else {
-			",=" + it.replace("^\\d+\\s+".toRegex(), "").replace("\\s+.*".toRegex(), "")
-		}
+	val lines = File(rawTextPath).readLines().map {
+		it.split("\t\t").joinToString(",=") + "," + it.split("\t\t")[1]
 	}
 	File(path).writeText(lines.joinToString("\n"))
 }
