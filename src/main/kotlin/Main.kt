@@ -1,5 +1,4 @@
 import java.io.File
-import java.io.FileWriter
 import java.time.LocalTime
 import kotlin.math.*
 
@@ -8,41 +7,7 @@ fun main() {
 	parseIntoCSV()
 }
 
-val primes = listOf(
-	2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97, 101,
-	103, 107, 109, 113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179, 181, 191, 193, 197, 199,
-	211, 223, 227, 229, 233, 239, 241, 251, 257, 263, 269, 271, 277, 281, 283, 293, 307, 311, 313, 317,
-	331, 337, 347, 349, 353, 359, 367, 373, 379, 383, 389, 397, 401, 409, 419, 421, 431, 433, 439, 443,
-	449, 457, 461, 463, 467, 479, 487, 491, 499, 503, 509, 521, 523, 541, 547, 557, 563, 569, 571, 577,
-	587, 593, 599, 601, 607, 613, 617, 619, 631, 641, 643, 647, 653, 659, 661, 673, 677, 683, 691, 701,
-	709, 719, 727, 733, 739, 743, 751, 757, 761, 769, 773, 787, 797, 809, 811, 821, 823, 827, 829, 839,
-	853, 857, 859, 863, 877, 881, 883, 887, 907, 911, 919, 929, 937, 941, 947, 953, 967, 971, 977, 983,
-	991, 997
-)
-val primeWeights = primes.map { ln(it.toDouble()) }
-fun getU(n: Int): List<Pair<Int, Int>> {
-	val nFactors = factorise(n)
-	return if (nFactors.size == 2) {
-		listOf(Pair(2, nFactors.last() - 1))
-	} else {
-		val a = generateAllFactorSequences(n)
-		println("$n ${a.size}")
-		a.minByOrNull { x ->
-			run {
-				var weight = 0.0
-				for (i in x.indices) {
-					weight += (x[i] - 1) * primeWeights[i]
-				}
-				weight
-			}
-		}!!.mapIndexed { index, i -> Pair(primes[index], i - 1) }
-	}
-}
-
-fun getSequence(): List<Int> {
-	return File("src/main/resources/rawSequence.txt").readLines().map { it.toInt() }
-}
-
+// Used getU() to find all terms startingN <= n <= endingN
 fun smartSearch(startingN: Int = 1, endingN: Int = -1, path: String = "src/main/resources/Un.txt") {
 	var log = ""
 	var n = startingN
@@ -55,69 +20,41 @@ fun smartSearch(startingN: Int = 1, endingN: Int = -1, path: String = "src/main/
 	File(path).writeText(log)
 }
 
-// Looks for successive values for Un via the use of rules and bruteforce
-fun search(startingN: Int) {
-	var previousNumbers = mutableListOf<Int>()
-	var previousFactorNumbers = mutableListOf<Int>()
-	val maxListSize = 30_000_000
-	// These lists keep track of numbers factored as factoring is inefficient
-
-	var n = startingN
-	while (true) {
-		// Rules
-		val nFactorNumber = countFactors(n)
-		if (nFactorNumber <= 2) {
-			// RULE #1 | for prime n: Un = 2^{n-1}
-			printWithTimestamp("$n  #1  2^${n - 1}")
-			n++
-			continue
-		} else if (nFactorNumber == 4) {
-			// RULE #2 | for n with 4 factors (1, n, a, b), Un = 2^{b-1} * 3^{a-1}  (b > a)
-			// EXCEPTION | for cubes of primes this is not the case as a = b^2,
-			// therefore there are other possible sequences
-			val iFactors = factorise(n).drop(2)
-			if (iFactors[0] * iFactors[0] * iFactors[0] != n) {
-				printWithTimestamp("$n  #2  2^${iFactors[1] - 1} * 3^${iFactors[0] - 1}")
-				n++
-				continue
+// List of primes and their natural logs
+val primes = listOf(
+	2, 3, 5, 7, 11, 13, 17,
+	19, 23, 29, 31, 37, 41,
+	43, 47, 53, 59, 61, 67,
+	71, 73, 79, 83, 89, 97
+)
+val primeWeights = primes.map { ln(it.toDouble()) }
+fun getU(n: Int): List<Pair<Int, Int>> {
+	return if (countFactors(n) == 2) {
+		// If n is prime then Un = 2^{n-1}
+		listOf(Pair(2, n - 1))
+	} else {
+		// Every factor sequence is weighted and the lowest is the powers of Un's prime factorization
+		val a = generateAllFactorSequences(n)
+		println("$n ${a.size}")
+		a.minByOrNull { x ->
+			run {
+				var weight = 0.0
+				for (i in x.indices) {
+					weight += (x[i] - 1) * primeWeights[i]
+				}
+				weight
 			}
-		} else if (nFactorNumber == 3) {
-			// RULE #3 | for n being a square of a prime with factors (1, a, n) (a is prime) the Un = 2^{a-1} * 3^{a-1}
-			val iFactor = factorise(n).drop(2)[0] - 1
-			printWithTimestamp("$n  #3  2^$iFactor * 3^$iFactor")
-			n++
-			continue
-		}
-
-		// Bruteforce
-		// Checks every even number until Un is found
-		var num = 0
-		do {
-			num += 2
-			val index = previousNumbers.indexOf(num)
-			var factors: Int
-			if (index == -1) {
-				factors = countFactors(num)
-				previousNumbers.add(num)
-				previousFactorNumbers.add(factors)
-			} else {
-				factors = previousFactorNumbers[index]
-			}
-			// If the number has been checked the number of factors is retrieved
-			// If the number is unchecked it adds it the list
-		} while (factors != n)
-
-		printWithTimestamp("$n      $num")
-		// Prints brute-forced number
-
-		if (previousNumbers.size >= maxListSize) {
-			previousNumbers = previousNumbers.takeLast(maxListSize).toMutableList()
-			previousFactorNumbers = previousFactorNumbers.takeLast(maxListSize).toMutableList()
-		}
-		// If the size of the previousNumbers is too large
-		// the first maxListSize elements are removed
-
-		n++
+		}!!.mapIndexed { index, i -> Pair(primes[index], i - 1) }
+		// This is a way to compare the size of powers
+		// of different bases without crazy huge numbers
+		// If we had to compare [3, 2, 2] and [17, 1]
+		// (2^3 * 3^2 * 5^2) vs (2^17 * 3^1)
+		// Take the log of both:
+		// ln(2^3 * 3^2 * 5^2) = 3ln(2) + 2ln(3) + 2ln(5) = 7.49
+		// ln(2^17 * 3^1) = 17ln(2) + 3ln(1) = 11.78
+		// (Therefore [3, 2, 2] is smaller than [17, 2])
+		// which are the powers multiplied by the log of the next prime
+		// The lowest value yields the lowest exp() therefore it's Un
 	}
 }
 
@@ -132,25 +69,7 @@ fun countFactors(n: Int): Int {
 	for (i in 2..upperBound) {
 		if (n % i == 0) {
 			factors += if (i * i == n) 1 else 2
-			// if i is the sqrt(n) it only counts as 1 factor
-		}
-	}
-	return factors
-}
-
-fun factorise(n: Int): List<Int> {
-	val factors = mutableListOf(1)
-	if (n == 1) {
-		return factors
-	}
-	factors.add(n)
-	val upperBound = ceil(sqrt(n.toDouble())).toInt()
-	for (i in 2..upperBound) {
-		if (n % i == 0 && !factors.contains(i)) {
-			factors.add(i)
-			if (i * i != n) {
-				factors.add(n / i)
-			}
+			// if sqrt(n) = i it only counts as 1 factor
 		}
 	}
 	return factors
@@ -177,22 +96,7 @@ fun primeFactors(number: Int): List<Int> {
 	return factors
 }
 
-// Parses a list of factors into index form
-// E.g. indexForm([2, 2, 2, 3, 5, 5]) => [(2, 3), (3, 1), (5, 2)]
-fun indexForm(factors: List<Int>): List<Pair<Int, Int>> {
-	val indexPairs = mutableListOf<Pair<Int, Int>>()
-	var lastFactor = 0
-	factors.forEach {
-		if (it != lastFactor) {
-			lastFactor = it
-			indexPairs.add(Pair(it, 1))
-		} else {
-			indexPairs[indexPairs.size - 1] = Pair(it, indexPairs.last().second + 1)
-		}
-	}
-	return indexPairs.toList()
-}
-
+// Puts the abstract list of pairs into a string which more resembles index notation
 fun beatifyIndexForm(factors: List<Pair<Int, Int>>): String {
 	return factors.joinToString(" * ") { "${it.first}^${it.second}" }
 }
@@ -263,12 +167,6 @@ fun multiplyOutSet(set: List<Int>): List<List<Int>> {
 	return sets
 }
 
-// Prints with a timestamp attached
-fun printWithTimestamp(str: String) {
-	println("${str.padEnd(30, ' ')}${LocalTime.now()}")
-}
-
-// THIS FUNCTION IS HORRIBLY WRITTEN - I'm not bothered
 // Takes the console output of the search and parses it into a csv,
 // which can then be imported to replace the values in the spreadsheet
 fun parseIntoCSV(rawTextPath: String = "src/main/resources/Un.txt", path: String = "src/main/resources/un_spreadsheet.csv") {
