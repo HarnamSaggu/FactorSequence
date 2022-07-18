@@ -3,19 +3,24 @@ import java.time.LocalTime
 import kotlin.math.*
 
 fun main() {
-	smartSearch(1, 511)
-	parseIntoCSV()
+	search(endingN = 1_000_000, path = "src/main/resources/millionUn.txt")
+	parseIntoCSV(path = "src/main/resources/millionUn.txt")
 }
 
 // Used getU() to find all terms startingN <= n <= endingN
-fun smartSearch(startingN: Int = 1, endingN: Int = -1, path: String = "src/main/resources/Un.txt") {
+fun search(startingN: Int = 1, endingN: Int = -1, path: String = "src/main/resources/Un.txt", backupConstant: Int = 5_000) {
 	var log = ""
 	var n = startingN
 	while (n <= endingN || endingN == -1) {
 		val record = "$n\t\t${beatifyIndexForm(getU(n))}"
 		log += "$record\n"
-		println(record.padEnd(50, ' ') + LocalTime.now())
+		println(record.padEnd(50, ' ') + "\t" + LocalTime.now())
 		n++
+
+		if (n % backupConstant == 0) {
+			File(path).writeText(log)
+			parseIntoCSV(path)
+		}
 	}
 	File(path).writeText(log)
 }
@@ -103,7 +108,7 @@ fun beatifyIndexForm(factors: List<Pair<Int, Int>>): String {
 // It takes the prime factors, then reduces them using the function below
 // Then those new sets are further
 fun generateAllFactorSequences(n: Int): List<List<Int>> {
-	val factorSequences = HashSet<List<Int>>()
+	val factorSequences = mutableSetOf<List<Int>>()
 	val primeFactors = primeFactors(n)
 	// The first set is the prime factorisation (not in index form)
 	// E.g. for n=24, primeFactors(n) => [2, 2, 2, 3]
@@ -118,6 +123,7 @@ fun generateAllFactorSequences(n: Int): List<List<Int>> {
 			nextSet.addAll(multiplyOutSet(set))
 			// This where sets are 'reduced'
 		}
+		nextSet = nextSet.distinct().toMutableList()
 
 		factorSequences.addAll(lastSet.toMutableList())
 		lastSet = nextSet.toMutableList()
@@ -165,7 +171,7 @@ fun multiplyOutSet(set: List<Int>): List<List<Int>> {
 	return sets
 }
 
-// Takes the console output of the search and parses it into a csv,
+// Takes the file output of search and parses it into a csv,
 // which can then be imported to replace the values in the spreadsheet
 fun parseIntoCSV(rawTextPath: String = "src/main/resources/Un.txt", path: String = "src/main/resources/un_spreadsheet.csv") {
 	val lines = File(rawTextPath).readLines().map {
